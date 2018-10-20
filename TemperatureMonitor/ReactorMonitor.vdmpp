@@ -1,0 +1,45 @@
+class ReactorMonitor
+
+instance variables 
+
+public static isFinished : bool := false;
+private environment : Environment;
+private sensor : Sensor;
+private monitor : Monitor;
+
+operations
+
+public Run : () ==> ()
+Run() ==
+	while (not isFinished)
+	do
+	(
+		monitor.Step();
+	);
+	
+public static Finish: () ==> ()
+Finish() == 
+	ReactorMonitor`isFinished := true;
+	
+public static RaiseAlarm : Monitor`Alarm ==> ()
+RaiseAlarm(a) ==
+	(
+		IO`print("ALARM: ");
+		IO`print(a);
+		IO`print("\n");
+	);
+	
+public ReactorMonitor: () ==> ReactorMonitor
+ReactorMonitor() ==
+	(
+		environment := new Environment(temps1);
+		sensor := new Sensor(environment);
+		monitor := new Monitor(sensor);
+		isFinished := false;
+	);
+	
+values
+
+temps1 = [387,384,381,383,384,385,400,nil,402,403,402,401,399,380, nil, nil, nil, 300];
+
+end ReactorMonitor

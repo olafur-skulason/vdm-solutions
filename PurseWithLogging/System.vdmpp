@@ -1,0 +1,54 @@
+class System
+instance variables
+
+private Purses: map Purse`CardId to Purse;
+inv forall x,y in set rng Purses & x <> y => x.GetCardNo() <> y.GetCardNo(); -- Card numbers must be unique. Useless?
+inv SumBalance({x.GetBalance() | x in set rng Purses}) = TotalBalance; -- Total balance must always be the same. 
+
+private TransactionHistory : seq of Transaction; 
+inv forall x in seq TransactionHistory & x.fromId <> x.toId; -- Can not transfer money to own purse.
+inv forall x in seq TransactionHistory & exists p in set dom Purses & x.fromId = p; -- From purse must exist.
+inv forall x in seq TransactionHistory & exists p in set dom Purses & x.toId = p; -- To purse must exist. 
+inv forall x in seq TransactionHistory & x.sum > 0; -- Cannot transfer negative or 0 amounts.
+
+private TotalBalance: real;
+types
+
+public Transaction ::
+	fromId : token
+	toId : token
+	sum : real;
+
+-- no types currently defined
+operations
+public Transfer: Purse`CardId * Purse`CardId * real ==> ()
+Transfer(fromId, toId, sum) == (
+		Purses(fromId).DecreaseBal(sum);
+		Purses(toId).IncreaseBal(sum);
+		TransactionHistory := TransactionHistory ^ [mk_Transaction(fromId,toId,sum)]
+	);
+
+public System: set of Purse ==> System
+System(PurseSet) == (
+	Purses := { p.GetCardNo() |-> p | p in set PurseSet};
+	TotalBalance := SumBalance({x.GetBalance() | x in set rng Purses});
+	TransactionHistory := []
+);
+
+public TotalTransferred: () ==> real
+TotalTransferred() == SumBalance({x.sum | x in seq TransactionHistory});
+
+functions
+-- no functions currently defined
+
+private SumBalance: set of real -> real
+SumBalance(numbers) == 
+	if numbers = {}
+	then 0
+	else
+		let p in set numbers
+		in
+			p + SumBalance(numbers\{p})
+measure card numbers;
+
+end System

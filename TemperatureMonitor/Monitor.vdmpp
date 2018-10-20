@@ -1,0 +1,64 @@
+class Monitor
+types
+
+public Alarm = <SYSTEM_UNSAFE>;
+
+public TempRead = seq of Sensor`Reading
+inv temp == len temp = 5;
+
+instance variables
+
+private readings : TempRead := [0,0,0,0,0];
+private sensor : Sensor;
+
+operations
+
+public Monitor : Sensor ==> Monitor
+Monitor(s) ==
+	sensor := s;
+	
+public Step : () ==> ()
+Step() ==
+	(
+		readings := tl readings ^ [sensor.ReadTemp()];
+		if not Safe(readings)
+		then ReactorMonitor`RaiseAlarm(<SYSTEM_UNSAFE>);
+	);
+
+
+functions
+
+-- the last reading in a sample is greater than the first
+public Rising: TempRead -> bool
+Rising(temp) == 
+	temp(5) > temp(1);
+
+-- there is a reading in excess of 400 degrees
+public OverLimit: TempRead -> bool
+OverLimit(temp) == 
+	exists i in set inds temp & i > 400;
+
+-- all readings in a sample exceed 400 degrees
+public COverLimit: TempRead -> bool
+COverLimit(temp) == 
+	forall i in set inds temp & i > 400;
+
+-- detecting whether a reactor can be considered safe, 3 failed readings also indicate a problem.
+public Safe: TempRead -> bool
+Safe(temp) == 
+	(temp(3) <> nil and temp(5) <> nil => (temp(3) > 400 => temp(5) < 400));-- and
+	--(exists t in set inds temp & exists j in set inds temp & exists k in set inds temp & 
+	--	(t <> j and j <> k and t <> k) => (temp(t) <> nil and temp(j) <> nil and temp(k) <> nil));
+
+-- detecting whether an alarm should be raised
+public RaiseAlarm(temp: TempRead) alarm : bool
+post not Safe(temp) <=> alarm;
+
+-- exactly one reading in the sample is in excess of 400
+public OnePeak: TempRead -> bool
+--OnePeak(temp) == exists i in set inds temp & temp(i) > 400 => (forall j in set temp & i <> j => j < 400);
+OnePeak(temp) == exists i in set inds temp & forall j in set inds temp & i <> j => temp(i) > 400 and temp(j) < 400
+--Ei,Aj : i <> j => temp(i) > 400 ^ temp(j) < 400
+end Monitor
+
+
