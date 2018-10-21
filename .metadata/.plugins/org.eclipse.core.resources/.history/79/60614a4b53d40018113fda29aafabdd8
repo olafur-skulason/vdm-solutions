@@ -1,0 +1,47 @@
+\begin{vdmpp}[breaklines=true]
+class Expert
+
+instance variables
+
+quali : set1 of Qualification;
+\end{vdmpp}
+\begin{vdmpp}[breaklines=true]
+types 
+ 
+public Qualification = <Mech> | <Chem> | <Bio> | <Elec>;
+(*@
+\label{Expert:13}
+@*)
+\end{vdmpp}
+\begin{vdmpp}[breaklines=true]
+operations
+(*@
+\label{GetQuali:17}
+@*)
+
+public Expert: set1 of Qualification ==> Expert
+Expert(qs) ==
+  quali := qs;
+\end{vdmpp}
+\begin{vdmpp}[breaklines=true]
+pure public GetQuali: () ==> set of Qualification
+GetQuali() ==
+  return quali;
+  
+end Expert
+\end{vdmpp}
+\bigskip
+\begin{longtable}{|l|r|r|r|}
+\hline
+Function or operation & Line & Coverage & Calls \\
+\hline
+\hline
+\hyperref[Expert:13]{Expert} & 13&100.0\% & 4 \\
+\hline
+\hyperref[GetQuali:17]{GetQuali} & 17&100.0\% & 8 \\
+\hline
+\hline
+expert.vdmpp & & 100.0\% & 12 \\
+\hline
+\end{longtable}
+

@@ -1,0 +1,29 @@
+class Tests
+types
+-- TODO Define types here
+values
+
+tracePeriodicTrue  = [ <A>, nil, nil, nil, <V>, <A>, nil, nil, nil, <V> ];
+tracePeriodicFalse = [ <A>, <V>, nil, <A>, <V>, <A>, <A>, <V>, nil, <V> ];
+
+-- TODO Define values here
+instance variables
+-- TODO Define instance variables here
+operations
+
+public RunAllTests: () ==> ()
+RunAllTests() == (
+		IO`print("Run periodic, true: ");
+		IO`print(Global`Periodic(tracePeriodicTrue, <A>, 4));
+		IO`print("\n");
+		IO`print("Run periodic, false: ");
+		IO`print(Global`Periodic(tracePeriodicTrue, <A>, 4));
+		IO`print("\n");
+	)
+
+-- TODO Define operations here
+functions
+-- TODO Define functiones here
+traces
+-- TODO Define Combinatorial Test Traces here
+end Tests

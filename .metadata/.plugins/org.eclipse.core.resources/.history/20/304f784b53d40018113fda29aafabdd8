@@ -1,0 +1,34 @@
+class Tracker is subclass of Global
+types
+
+values
+
+conveyor_length : nat = 1000;
+step_distance : nat = 2;
+
+instance variables
+
+locations : set of Location := {};
+events : set of Event := {};
+
+operations
+
+public add_piece: Piece ==> ()
+add_piece(piece) == 
+	def t : nat = World`time.get_time() in (
+		events := dunion {events, { mk_Event(<grade>, t+1, piece) }, {mk_Event(<off_end>, t+(conveyor_length/step_distance), piece)}};
+	);
+
+public add_order: Order ==> ()
+add_order(order) ==
+	is not yet specified;
+	
+public sign_batch: Location_ID ==> ()
+sign_batch(location_id) == is not yet specified
+
+
+functions
+-- TODO Define functiones here
+traces
+-- TODO Define Combinatorial Test Traces here
+end Tracker

@@ -1,0 +1,94 @@
+class Location is subclass of Global
+instance variables
+
+private location_id : Location_ID;
+private distance: nat1;
+private state: <empty> | <filling> | <waiting_last_piece> | <full> := <empty>;
+private gate : Gate := mk_Gate(<closed>);
+private production : [Production] := nil;
+inv (state = <empty> and production = nil) or (state <> <empty> and production <> nil)
+
+values
+
+private gate_length : nat1 = 30;
+private drop_time : nat1 = 5;
+
+operations
+
+public Location: Location_ID * nat1 ==> Location
+Location(id, dist) == (
+	location_id := id;
+	distance := dist
+	);
+
+public commit_piece: Piece ==> ()
+commit_piece(piece) ==
+	production.committed_pieces := production.committed_pieces union {piece}
+pre production <> nil;
+	
+public route_piece: Piece ==> ()
+route_piece(piece) == (
+	production.routed_pieces := production.routed_pieces union {piece};
+	production.committed_pieces := production.committed_pieces \ {piece};
+)
+pre production <> nil and exists p in set production.committed_pieces & p = piece; 
+
+public open_gate: () ==> ()
+open_gate() == gate.state := <open>
+pre gate.state = <closed>;
+
+public close_gate: () ==> ()
+close_gate() == gate.state := <closed>
+pre gate.state = <open>;
+
+public set_order: Order ==> ()
+set_order(order) == (
+	production.order := order
+)
+pre production.order = nil;
+
+public pure get_order: () ==> [Order]
+get_order() == return production.order;
+
+public sign_batch: () ==> ()
+sign_batch() == (
+	if state = <empty> then skip -- We are not producing anything. Do nothing.
+	else if state = <filling> then ( -- go to full or waiting_last_piece
+		if card production.committed_pieces <> 0 then state := <waiting_last_piece>
+		else state := <full>;
+	)
+	else if state = <waiting_last_piece> then skip -- we are waiting for the last piece to be routed. Do nothing.
+	else if state = <full> then atomic (
+		state := <empty>;
+		production := nil;
+	)
+);
+
+public pure offer_piece: Piece ==> real
+offer_piece(piece) == return 1;--is not yet specified;
+
+public pure get_id: () ==> Location_ID
+get_id() == return location_id;
+
+public get_production: () ==> [Production]
+get_production() == return production;
+
+public set_production: Order ==> ()
+set_production(order) == atomic (
+	production := mk_Production({},{},false, order);
+	state := <filling>
+	);
+	
+public get_distance: () ==> nat1
+get_distance() == return distance;
+
+functions
+
+public get_gate_length: () +> nat1
+get_gate_length() == gate_length;
+
+public get_drop_time: () +> nat1
+get_drop_time() == drop_time;
+
+
+end Location

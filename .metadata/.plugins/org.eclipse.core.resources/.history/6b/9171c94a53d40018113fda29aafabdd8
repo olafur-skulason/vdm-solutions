@@ -1,0 +1,64 @@
+\begin{vdmpp}[breaklines=true]
+class Test1
+
+instance variables
+
+a1   : Alarm  := new Alarm(<Mech>,"Mechanical fault");
+a2   : Alarm  := new Alarm(<Chem>,"Tank overflow");
+ex1  : Expert := new Expert({<Mech>,<Bio>});
+ex2  : Expert := new Expert({<Elec>});
+ex3  : Expert := new Expert({<Chem>,<Bio>,<Mech>});
+ex4  : Expert := new Expert({<Elec>,<Chem>});
+plant: Plant  := new Plant({a1},{p1 |-> {ex1,ex4},
+                                 p2 |-> {ex2,ex3}});
+exs : set of Expert := {ex1,ex2,ex3,ex4};
+
+values
+
+p1: Plant`Period = mk_token("Monday day");
+p2: Plant`Period = mk_token("Monday night");
+p3: Plant`Period = mk_token("Tuesday day");
+p4: Plant`Period = mk_token("Tuesday night");
+ps : set of Plant`Period = {p1,p2,p3,p4};
+(*@
+\label{Run:23}
+@*)
+
+operations
+
+pure public Run: () ==> set of Plant`Period * Expert
+Run() == 
+  let periods = plant.ExpertIsOnDuty(ex1),
+      expert  = plant.ExpertToPage(a1,p1)
+  in 
+    return mk_(periods,expert);
+
+traces
+
+  AddingAndDeleting: let myex in set (*@\vdmnotcovered{exs}@*)
+                     in
+                       let myex2 in set exs \ (*@\vdmnotcovered{\{}@*)(*@\vdmnotcovered{myex}@*)}
+                       in
+                         let p in set (*@\vdmnotcovered{ps}@*) 
+                         in
+                          ((*@\vdmnotcovered{plant}@*).AddExpertToSchedule((*@\vdmnotcovered{p}@*),(*@\vdmnotcovered{myex}@*));
+                           plant.AddExpertToSchedule(p,(*@\vdmnotcovered{myex2}@*));
+                           plant.RemoveExpertFromSchedule((*@\vdmnotcovered{p}@*),(*@\vdmnotcovered{myex}@*));
+                           (*@\vdmnotcovered{plant}@*).RemoveExpertFromSchedule((*@\vdmnotcovered{p}@*),(*@\vdmnotcovered{myex2}@*)))
+                           
+                       
+end Test1
+\end{vdmpp}
+\bigskip
+\begin{longtable}{|l|r|r|r|}
+\hline
+Function or operation & Line & Coverage & Calls \\
+\hline
+\hline
+\hyperref[Run:23]{Run} & 23&100.0\% & 1 \\
+\hline
+\hline
+test1.vdmpp & & 80.0\% & 1 \\
+\hline
+\end{longtable}
+

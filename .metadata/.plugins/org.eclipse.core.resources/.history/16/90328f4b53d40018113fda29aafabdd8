@@ -1,0 +1,44 @@
+class Global
+types
+	
+public Event ::
+	event_type : <grade> | <route> | <commit> | <open_gate> | <close_gate> | <off_end>
+	time : nat1
+	piece : Piece;
+	
+public Gate ::
+	state : <open> | <closed>;
+	
+public Location_ID :: token;
+
+public Algorithm = <grading> | <batching> | <rate>; 
+
+public Order :: 
+	priority : nat
+	algorithm : Algorithm
+	count : nat
+	min_weight: real
+	max_weight: real;
+	
+public Piece ::
+	piece_id : token
+	weight : real
+	length : real
+	position : nat
+	destination : [Location_ID];
+	
+public Production ::
+	routed_pieces : set of Piece
+	committed_pieces : set of Piece
+	complete : bool
+	order : [Order]
+	
+
+values
+
+
+
+instance variables
+
+
+end Global

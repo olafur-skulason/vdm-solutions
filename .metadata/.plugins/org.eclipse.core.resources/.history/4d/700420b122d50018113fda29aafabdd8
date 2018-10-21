@@ -1,0 +1,73 @@
+types
+image ::
+	ID : token
+	quality : nat;
+	
+	--1. Get baggage images from camera
+	--2. Sort baggage images in TF
+	--3. Get Next un-sorted bag for grading.
+	
+	
+bag ::
+	cause : <no_bsm> | <no_read> 
+	BG : BaggageRecording
+	dest : [BSM];
+
+	
+BaggageRecording = set of image; -- A set of images of a bag tag with variant quality.
+Preselection = seq of image; -- A sequence of images ordered by highest quality first.
+
+User ::
+	Group : set of (<VCS_operator> | <VCS_Administrator>)
+	user_id : seq of char;
+
+BSM :: 
+	code : seq of char
+	flight : seq of char
+
+values
+
+max_concurrent_users : nat = 10;
+
+state system_state of
+	current_users : set of User
+	baggage_queue : seq of bag
+	known_BSM : set of BSM
+	known_flights : set of Flights
+inv mk_system_state(current_users, baggage_queue, known_BSM, known_flights) == 
+		card current_users < max_concurrent_users and
+		forall b in seq baggage_queue & len b.dest = 0
+init i == i = mk_system_state({}, [], [])
+end	
+
+operations
+
+Login(user:User) auth_level:nat
+pre user not in set system_state.current_users  -- User must not be logged in.
+		and card (user.Group inter {<VCS_operator>, <VCS_Administrator>}) > 0 -- User must be authorized
+post user in set system_state.current_users -- User must be logged in. 
+		and auth_level = card (user.Group inter {<VCS_operator>, <VCS_Administrator>}); -- User must be correctly authorized.
+
+Logout(user:User)
+pre user in set system_state.current_users
+post user not in set system_state.current_users;
+
+Logout_other(admin:User, user:User)
+pre <VCS_Administrator> in set admin.Group -- admin must be Administrator
+		and user in set system_state.current_users
+		and admin in set system_state.current_users
+post user not in set system_state.current_users;
+
+functions
+
+
+GetBaggageRecording() bg:BaggageRecording
+post card bg >= 25;
+
+SortImages(bg:BaggageRecording) ps:Preselection
+pre card bg > 25
+post len ps = 25 and (forall i,j in set inds ps & (i > j) => ps(i).quality >= ps(j).quality);
+
+EvaluateImage(ps:Preselection) dest:seq of char
+pre len ps = 25
+post len dest > 0 and len dest <= 3;

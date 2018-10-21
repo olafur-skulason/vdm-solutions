@@ -1,0 +1,36 @@
+class test
+types
+-- TODO Define types here
+values
+-- TODO Define values here
+instance variables
+
+purses : set of Purse := {};
+system : System;
+
+-- TODO Define instance variables here
+operations
+
+public test: () ==> test
+test() == (
+	system := new System({},1000)
+);
+
+public RunTests: () ==> ()
+RunTests() == (
+	purses := { new Purse(mk_token(1), 100), new Purse(mk_token(2), 300), new Purse(mk_token(3),600)};
+	system := new System(purses, 1000);
+	
+	system.Transfer(mk_token(1), mk_token(2), 50);
+	system.Transfer(mk_token(2), mk_token(3), 150);
+	system.Transfer(mk_token(3), mk_token(1), 500);
+	system.Transfer(mk_token(1), mk_token(3), 50);
+	system.Transfer(mk_token(2), mk_token(2), 10);
+	system.Transfer(mk_token(3), mk_token(2), 25);
+);
+
+functions
+-- TODO Define functiones here
+traces
+-- TODO Define Combinatorial Test Traces here
+end test

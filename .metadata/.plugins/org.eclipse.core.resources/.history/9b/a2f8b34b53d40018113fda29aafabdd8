@@ -1,0 +1,57 @@
+class Heart
+types
+-- TODO Define types here
+values
+-- TODO Define values here
+instance variables
+
+period: nat;
+v_delay: nat;
+
+-- TODO Define instance variables here
+operations
+
+public Heart: nat * nat ==> Heart
+Heart(p, v_d) == (
+	period := p;
+	v_delay := v_d;
+);
+
+public pure Ideal: () ==> Global`Trace
+Ideal() == (
+	build_ideal(period, period+v_delay, 100);
+);
+
+private pure build_ideal: nat * nat * nat ==> Global`Trace
+build_ideal(to_next_A, to_next_V, remaining) ==
+	if remaining = 0 then return []
+	else if to_next_A = 0 then return [<A>] ^ build_ideal(period-1, to_next_V-1, remaining-1)
+	else if to_next_V = 0 then return [<V>] ^ build_ideal(to_next_A-1, to_next_A-1+v_delay, remaining-1)
+	else return [nil] ^  build_ideal(to_next_A-1, to_next_V-1, remaining-1);
+
+public pure Faulty() t:Global`Trace
+ext rd period rd v_delay
+post t = Ideal() ++ { 4 |-> <V>, 8 |-> <V>, 8 |-> <V>, 12 |-> <V>, 16 |-> <V>, 20 |-> <V>, 24 |-> <V>, 32 |-> <V> }
+
+-- TODO Define operations here
+functions
+
+-- This function defines whether an event is periodic in the trace given a period.
+-- The functionality can be defined as follows:
+--		Forall indexes where tr(i) == ev the next occurrance of ev in tr happens at tr(i+p) or the stream ends.
+--    f(tr,ev,p) = (<all instances of ev happen on period p> and <no ev in tr from seq (i .. i+p)) and IF <len(tr) < i+p> then <no ev in seq (i .. len(tr)]
+-- 		f(tr,ev,p) = (<tr(i) == tr(i+p) == ev> ^ <tr(i) != tr(i+1 .. i+p-1)>) ^ <tr(i .. len(tr)) <> ev
+public Periodic: Global`Trace * Global`Event * nat1 -> bool
+Periodic(tr, ev, p) ==
+	forall t in set inds tr &
+		tr(t) = ev => 
+			(t + p <= len tr =>
+				(tr(t+p) = ev and
+				forall i in set {t+1, ..., t+p-1} & tr(i) <> ev))
+			and 
+			(t + p > len tr => forall i in set {t+1, ..., len tr} & tr(i) <> ev);
+
+
+traces
+-- TODO Define Combinatorial Test Traces here
+end Heart

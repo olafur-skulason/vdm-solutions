@@ -1,0 +1,38 @@
+class Global
+types
+-- TODO Define types here
+
+public Trace = seq of [Event];
+
+public Event = <A> | <V>;
+
+values
+
+-- TODO Define values here
+instance variables
+-- TODO Define instance variables here
+operations
+-- TODO Define operations here
+functions
+
+-- This function defines whether an event is periodic in the trace given a period.
+-- The functionality can be defined as follows:
+--		Forall indexes where tr(i) == ev the next occurrance of ev in tr happens at tr(i+p) or the stream ends.
+--    f(tr,ev,p) = (<all instances of ev happen on period p> and <no ev in tr from seq (i .. i+p)) and IF <len(tr) < i+p> then <no ev in seq (i .. len(tr)]
+-- 		f(tr,ev,p) = (<tr(i) == tr(i+p) == ev> ^ <tr(i) != tr(i+1 .. i+p-1)>) ^ <tr(i .. len(tr)) <> ev
+public Periodic: Trace * Event * nat1 -> bool
+Periodic(tr, ev, p) ==
+	forall t in set inds tr &
+		tr(t) = ev => 
+			(t + p <= len tr =>
+				(tr(t+p) = ev and
+				forall i in set {t+1, ..., t+p-1} & tr(i) <> ev))
+			and 
+			(t + p > len tr => forall i in set {t+1, ..., len tr} & tr(i) <> ev);
+
+-- TODO Define functiones here
+traces
+-- TODO Define Combinatorial Test Traces here
+
+
+end Global

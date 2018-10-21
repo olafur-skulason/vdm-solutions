@@ -1,0 +1,48 @@
+\begin{vdmpp}[breaklines=true]
+class Alarm
+
+types
+
+public String = seq of char;
+
+instance variables 
+
+descr    : String;
+reqQuali : Expert`Qualification;
+
+operations
+
+(*@
+\label{Alarm:14}
+@*)
+public Alarm: Expert`Qualification * String ==> Alarm
+Alarm(quali,str) ==
+( descr := (*@\vdmnotcovered{str}@*);
+  reqQuali := (*@\vdmnotcovered{quali}@*);
+  return (*@\vdmnotcovered{self}@*)
+);
+
+(*@
+\label{GetReqQuali:21}
+@*)
+pure public GetReqQuali: () ==> Expert`Qualification
+GetReqQuali() ==
+  (*@\vdmnotcovered{return}@*) (*@\vdmnotcovered{reqQuali}@*);
+  
+end Alarm
+\end{vdmpp}
+\bigskip
+\begin{longtable}{|l|r|r|r|}
+\hline
+Function or operation & Line & Coverage & Calls \\
+\hline
+\hline
+\hyperref[Alarm:14]{Alarm} & 14&0.0\% & 0 \\
+\hline
+\hyperref[GetReqQuali:21]{GetReqQuali} & 21&0.0\% & 0 \\
+\hline
+\hline
+alarm.vdmpp & & 0.0\% & 0 \\
+\hline
+\end{longtable}
+

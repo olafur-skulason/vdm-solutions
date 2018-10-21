@@ -1,0 +1,48 @@
+\begin{vdmpp}[breaklines=true]
+class Test1
+
+instance variables
+
+a1   : Alarm  := new (*@\vdmnotcovered{Alarm}@*)((*@\vdmnotcovered{<Mech>}@*),(*@\vdmnotcovered{"Mechanical fault"}@*));
+a2   : Alarm  := (*@\vdmnotcovered{new}@*) Alarm(<Chem>,(*@\vdmnotcovered{"Tank overflow"}@*));
+ex1  : Expert := new Expert((*@\vdmnotcovered{\{}@*)<Mech>,(*@\vdmnotcovered{<Bio>}@*)});
+ex2  : Expert := new Expert({(*@\vdmnotcovered{<Elec>}@*)});
+ex3  : Expert := new Expert({<Chem>,<Bio>,(*@\vdmnotcovered{<Mech>}@*)});
+ex4  : Expert := new Expert({(*@\vdmnotcovered{<Elec>}@*),(*@\vdmnotcovered{<Chem>}@*)});
+plant: Plant  := (*@\vdmnotcovered{new}@*) Plant({a1},{p1 |-> {(*@\vdmnotcovered{ex1}@*),(*@\vdmnotcovered{ex4}@*)},
+                                 (*@\vdmnotcovered{p2}@*) (*@\vdmnotcovered{|->}@*) {(*@\vdmnotcovered{ex2}@*),(*@\vdmnotcovered{ex3}@*)}});
+
+values
+
+p1: Plant`Period = mk_token((*@\vdmnotcovered{"Monday day"}@*));
+p2: Plant`Period = mk_token((*@\vdmnotcovered{"Monday night"}@*));
+p3: Plant`Period = mk_token((*@\vdmnotcovered{"Tuesday day"}@*));
+p4: Plant`Period = mk_token((*@\vdmnotcovered{"Tuesday night"}@*));
+
+operations
+
+(*@
+\label{Run:23}
+@*)
+public Run: () ==> set of Plant`Period * Expert
+Run() == 
+  let periods = (*@\vdmnotcovered{plant}@*).ExpertIsOnDuty((*@\vdmnotcovered{ex1}@*)),
+      expert  = plant.ExpertToPage((*@\vdmnotcovered{a1}@*),(*@\vdmnotcovered{p1}@*))
+  in 
+    return mk_(periods,(*@\vdmnotcovered{expert}@*));
+
+end Test1
+\end{vdmpp}
+\bigskip
+\begin{longtable}{|l|r|r|r|}
+\hline
+Function or operation & Line & Coverage & Calls \\
+\hline
+\hline
+\hyperref[Run:23]{Run} & 23&0.0\% & 0 \\
+\hline
+\hline
+test1.vdmpp & & 0.0\% & 0 \\
+\hline
+\end{longtable}
+

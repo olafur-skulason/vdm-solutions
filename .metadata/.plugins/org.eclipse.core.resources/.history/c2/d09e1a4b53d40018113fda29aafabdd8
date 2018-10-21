@@ -1,0 +1,95 @@
+\begin{vdmpp}[breaklines=true]
+class Plant
+
+instance variables
+
+alarms   : set of Alarm;
+schedule : map Period to set of Expert;
+inv PlantInv((*@\vdmnotcovered{alarms}@*),(*@\vdmnotcovered{schedule}@*));
+
+functions
+
+(*@
+\label{PlantInv:11}
+@*)
+PlantInv: set of Alarm * map Period to set of Expert -> 
+          bool
+PlantInv(as,sch) ==
+  (forall p in set dom sch & sch((*@\vdmnotcovered{p}@*)) (*@\vdmnotcovered{<>}@*) {}) (*@\vdmnotcovered{and}@*)
+  (forall a in set (*@\vdmnotcovered{as}@*) &
+     forall p in set dom (*@\vdmnotcovered{sch}@*) &
+       exists expert in set (*@\vdmnotcovered{sch}@*)((*@\vdmnotcovered{p}@*)) &
+         a.GetReqQuali() in set (*@\vdmnotcovered{expert}@*).(*@\vdmnotcovered{GetQuali}@*)());
+
+types
+
+public Period = token;
+
+operations
+
+(*@
+\label{ExpertToPage:26}
+@*)
+public ExpertToPage: Alarm * Period ==> Expert
+ExpertToPage(a, p) ==
+  let expert in set schedule((*@\vdmnotcovered{p}@*)) be st
+      a.GetReqQuali() in set (*@\vdmnotcovered{expert}@*).(*@\vdmnotcovered{GetQuali}@*)()
+  in
+    (*@\vdmnotcovered{return}@*) (*@\vdmnotcovered{expert}@*)
+pre (*@\vdmnotcovered{a}@*) (*@\vdmnotcovered{in}@*) set alarms (*@\vdmnotcovered{and}@*)
+    p (*@\vdmnotcovered{in}@*) set dom (*@\vdmnotcovered{schedule}@*)
+post (*@\vdmnotcovered{let}@*) expert = (*@\vdmnotcovered{RESULT}@*)
+     in
+       expert in set schedule(p) (*@\vdmnotcovered{and}@*)
+       a.GetReqQuali() in set expert.(*@\vdmnotcovered{GetQuali}@*)();
+  
+(*@
+\label{NumberOfExperts:39}
+@*)
+public NumberOfExperts: Period ==> nat
+NumberOfExperts(p) ==
+  return card schedule((*@\vdmnotcovered{p}@*))
+pre (*@\vdmnotcovered{p}@*) (*@\vdmnotcovered{in}@*) set dom (*@\vdmnotcovered{schedule}@*);
+
+(*@
+\label{ExpertIsOnDuty:44}
+@*)
+public ExpertIsOnDuty: Expert ==> set of Period
+ExpertIsOnDuty(ex) ==
+  (*@\vdmnotcovered{return}@*) {p | p in set dom (*@\vdmnotcovered{schedule}@*) & 
+              ex in set schedule((*@\vdmnotcovered{p}@*))};
+
+(*@
+\label{Plant:49}
+@*)
+public Plant: set of Alarm * 
+              map Period to set of Expert ==> Plant
+Plant(als,sch) ==
+( alarms := (*@\vdmnotcovered{als}@*);
+  (*@\vdmnotcovered{schedule}@*) := (*@\vdmnotcovered{sch}@*)
+)
+pre (*@\vdmnotcovered{PlantInv}@*)(als,(*@\vdmnotcovered{sch}@*));
+
+end Plant
+\end{vdmpp}
+\bigskip
+\begin{longtable}{|l|r|r|r|}
+\hline
+Function or operation & Line & Coverage & Calls \\
+\hline
+\hline
+\hyperref[ExpertIsOnDuty:44]{ExpertIsOnDuty} & 44&0.0\% & 0 \\
+\hline
+\hyperref[ExpertToPage:26]{ExpertToPage} & 26&0.0\% & 0 \\
+\hline
+\hyperref[NumberOfExperts:39]{NumberOfExperts} & 39&0.0\% & 0 \\
+\hline
+\hyperref[Plant:49]{Plant} & 49&0.0\% & 0 \\
+\hline
+\hyperref[PlantInv:11]{PlantInv} & 11&0.0\% & 0 \\
+\hline
+\hline
+plant.vdmpp & & 0.0\% & 0 \\
+\hline
+\end{longtable}
+
