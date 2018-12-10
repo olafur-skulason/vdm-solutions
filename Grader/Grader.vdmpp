@@ -1,0 +1,94 @@
+class Grader is subclass of Global
+
+values
+instance variables
+
+orders : set of Order := {};
+productions : map Location_ID to Production := { |-> };
+tracker : [Tracker] := nil -- Must be initialized after Tracker.
+
+operations
+
+public Grader: () ==> Grader
+Grader() == skip;
+
+public set_tracker: Tracker ==> ()
+set_tracker(itemtracker) == tracker := itemtracker;
+
+public add_order: Global`Order ==> ()
+add_order(order) == (
+	orders := orders union {order};
+	let location_ids : set of Location_ID = get_order_placement(order, order.concurrent) in (
+			set_production(location_ids, order)
+		)
+)
+pre  order not in set orders and forall p in set rng productions & p.get_order() <> order and tracker <> nil
+post order in set orders;
+
+private get_order_placement: Order * nat ==> set of Location_ID
+get_order_placement(new_order, concurrency) == (
+	if concurrency = 0 then
+		return {}
+	else 
+		let result_domain = { domain | domain in set power new_order.locations & card domain = concurrency } in 
+			if result_domain <> {} then
+				let result in set { res | res in set result_domain & best_subset(productions, result_domain, res) } in 
+					if result <> {} then
+						return result;
+		return get_order_placement(new_order, concurrency-1)
+)
+post forall loc in set RESULT & loc in set dom productions => productions(loc).get_prio() < new_order.priority;  
+
+public grade_piece: Piece * set of Location_ID ==> Location_ID * bool
+grade_piece(piece, locs) == 
+(
+	let destination in set (locs inter dom productions) be st
+		forall loc in set (locs inter dom productions) & 
+			destination <> loc => (
+					offer_piece(productions(destination), piece) >= offer_piece(productions(loc), piece)
+			)in (
+				productions(destination).commit_piece(piece);
+				return mk_(destination, productions(destination).is_complete())
+			)
+)
+pre piece.destination = nil and locs <> {};
+
+private set_production: set of Location_ID * Order ==> ()
+set_production(locs, order) ==
+	if card locs <> 0 then
+		let loc in set locs in
+		(
+			if loc in set dom productions then
+				tracker.sign_batch(loc); -- Clear current production
+			productions(loc) := new Production(order);
+			set_production(locs \ {loc}, order)
+		)
+pre tracker <> nil
+
+functions
+
+-- Verifies that the test set is the set in result domain with the best fit.
+private best_subset: map Location_ID to Production * set of set of Location_ID * set of Location_ID -> bool
+best_subset(productions, result_domain, test_set) == (
+	forall o in set result_domain & test_set <> o => sum_prio(productions, test_set) <= sum_prio(productions, o)
+);
+
+-- Sums the priorities overridden, if a new order were assigned to locs.
+-- This is the cost function of the order assignment function. 
+private sum_prio: map Location_ID to Production * set of Location_ID -> nat
+sum_prio(prod, locs) == (
+	if card locs = 0 then
+		0
+	else
+		let l in set locs in
+			if l in set dom prod then
+				prod(l).get_prio() + sum_prio(prod, locs \ {l})
+			else
+				0 + sum_prio(prod, locs \ {l})
+)
+measure card locs;
+
+private offer_piece : Production * Piece -> real
+offer_piece(prod, piece) == prod.offer_piece(piece);
+
+end Grader

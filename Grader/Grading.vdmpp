@@ -1,0 +1,20 @@
+class Grading is subclass of Method
+values
+instance variables
+operations
+
+public Grading: Order ==> Grading
+Grading(order) == self.Method(order);
+
+public pure offer_piece: Piece ==> real
+offer_piece(piece) == return evaluate_criterion(piece);
+
+public pure complete: () ==> bool
+complete() == return false; -- grading is never complete.
+
+public commit_piece: Piece ==> ()
+commit_piece(-) == skip; -- No need to update anything for grading.
+
+functions
+traces
+end Grading

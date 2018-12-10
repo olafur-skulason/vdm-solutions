@@ -1,0 +1,12 @@
+class multiple_return_values
+operations
+
+public func: () ==> nat * nat
+func() == return mk_(1,1);
+
+public use_func: () ==> ()
+use_func() == (
+	let a : mk_(nat,nat) = func() in skip
+);
+
+end multiple_return_values

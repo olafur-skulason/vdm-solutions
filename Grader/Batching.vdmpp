@@ -1,0 +1,38 @@
+class Batching is subclass of Method
+values
+instance variables
+
+pieces : set of Piece := {};
+completion_weight : real;
+
+operations
+
+public Batching: Order ==> Batching
+Batching(order) == (
+	completion_weight := order.completion("weight");
+	self.Method(order);
+);
+
+public pure offer_piece: Piece ==> real
+offer_piece(piece) == return evaluate_criterion(piece);
+
+public pure complete: () ==> bool
+complete() == (
+	dcl w : real := 0;
+	for all p in set pieces do
+		w := w + p.weight;
+	return w > completion_weight;
+);
+
+public commit_piece: Piece ==> ()
+commit_piece(piece) == (
+	pieces := pieces union {piece}
+)
+pre piece not in set pieces
+post piece in set pieces;
+
+functions
+
+traces
+
+end Batching

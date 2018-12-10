@@ -1,1 +1,2 @@
-[mk_(0,1,<grading>, 4,90,110)]
+[mk_(0,1,<grading>, 4, {mk_token(1),mk_token(2),mk_token(3)},{ "min" |-> 90, "max" |-> 110 }, { |-> }, 1000),
+mk_(1,2,<batching>, 6, {mk_token(3),mk_token(4),mk_token(5),mk_token(6),mk_token(7),mk_token(8)},{ "min" |-> 80, "max" |-> 100 }, { "weight" |-> 500 }, 10)]

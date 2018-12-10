@@ -1,0 +1,77 @@
+class Method is subclass of Global
+
+instance variables
+
+protected min_weight : [real];
+protected max_weight : [real];
+protected production_count : nat;
+
+operations
+
+public Method: Order ==> Method
+Method(order) == (
+	production_count := order.count;
+	if "min" in set dom order.criteria then
+		min_weight := order.criteria("min")
+	else
+		min_weight := nil;
+	if "max" in set dom order.criteria then
+		max_weight := order.criteria("max")
+	else
+		max_weight := nil
+);
+
+public pure offer_piece: Piece ==> real
+offer_piece(-) == is subclass responsibility;
+
+public pure complete: () ==> bool
+complete() == is subclass responsibility;
+
+public commit_piece: Piece ==> ()
+commit_piece(-) == is subclass responsibility;
+
+public static get_method: Order ==> Method
+get_method(order) == (
+	if order.algorithm = <grading> then
+		return new Grading(order)
+	else if order.algorithm = <batching> then
+		return new Batching(order)
+	else
+		return new Rate(order)
+)
+pre order.algorithm in set { <grading>, <batching>, <rate> };
+
+protected pure evaluate_criterion: Piece ==> real
+evaluate_criterion(piece) ==
+(
+	if max_weight <> nil and min_weight <> nil then
+		return evaluate_double_bounded_criteria(piece, min_weight, max_weight)
+	else if max_weight <> nil then
+		return evaluate_upper_bounded_criteria(piece, max_weight)
+	else if min_weight <> nil then
+		return evaluate_lower_bounded_criteria(piece, min_weight)
+	else
+		return 1
+)
+
+functions
+
+private evaluate_double_bounded_criteria: Piece * real * real +> real
+evaluate_double_bounded_criteria(piece, min, max) == (
+	if piece.weight < max and piece.weight > min then
+		MATH`cos( ((piece.weight - min) * (MATH`pi) / (max - min)) - (MATH`pi/2) )
+	else 
+		-1	
+);
+
+private evaluate_upper_bounded_criteria: Piece * real +> real
+evaluate_upper_bounded_criteria(piece, max) ==
+	evaluate_double_bounded_criteria(piece, 0, max); -- Pieces can not have negative weight.
+
+private evaluate_lower_bounded_criteria: Piece * real +> real
+evaluate_lower_bounded_criteria(piece, min) ==
+	evaluate_double_bounded_criteria(piece, min, 1000000); -- Pieces can not weigh more than a ton.
+
+traces
+-- TODO Define Combinatorial Test Traces here
+end Method

@@ -1,17 +1,27 @@
 class Location is subclass of Global
+types 
+
 instance variables
 
-private location_id : Location_ID;
-private distance: nat1;
+private location_id : Location_ID; -- Identification
+private distance: nat1; -- How far from the entry point is this location 
+-- Accepting pieces in empty and filling.
+-- Waiting last piece, means the last piece has been committed, but not routed.
+-- Full means the last piece has been routed.
 private state: <empty> | <filling> | <waiting_last_piece> | <full> := <empty>;
-private gate : Gate := mk_Gate(<closed>);
-private production : [Production] := nil;
-inv (state = <empty> and production = nil) or (state <> <empty> and production <> nil)
+-- The state of the gate, either open or closed.
+private gate : Gate := <closed>;
+
+-- Pieces that will be routed to this location.
+private committed_pieces : set of Piece := {};
+-- Pieces that have already been routed to this location.
+private routed_pieces : set of Piece := {};
 
 values
 
-private gate_length : nat1 = 30;
-private drop_time : nat1 = 5;
+-- Constants used for timing in tracker
+private gate_length : nat1 = 30; -- How long is the gate in distance
+private drop_time : nat1 = 5; -- How many time does it take for a piece to fall into the location.
 
 operations
 
@@ -21,66 +31,74 @@ Location(id, dist) == (
 	distance := dist
 	);
 
-public commit_piece: Piece ==> ()
-commit_piece(piece) ==
-	production.committed_pieces := production.committed_pieces union {piece}
-pre production <> nil;
+-- Commit piece to location, location is now expecting the piece to be routed.
+public commit_piece: Piece * bool ==> ()
+commit_piece(piece, last) == (
+	committed_pieces := committed_pieces union {piece};
+	if last then
+		state := <waiting_last_piece>
+	else
+		state := <filling>
+)
+pre {piece} inter committed_pieces = {} and -- Piece has not been committed here.
+		{piece} inter routed_pieces = {} and -- Piece has not been routed here.
+		(state = <empty> or state = <filling>); -- The location is accepting pieces.
 	
+-- Route committed piece to location. If it is the last piece of the batch, then 
 public route_piece: Piece ==> ()
 route_piece(piece) == (
-	production.routed_pieces := production.routed_pieces union {piece};
-	production.committed_pieces := production.committed_pieces \ {piece};
+	routed_pieces := routed_pieces union {piece};
+	committed_pieces := committed_pieces \ {piece};
+	if state = <waiting_last_piece> and card committed_pieces = 0 then
+		state := <full>
 )
-pre production <> nil and exists p in set production.committed_pieces & p = piece; 
+pre exists cp in set committed_pieces & cp.piece_id = piece.piece_id and -- Piece must have been committed before being routed.
+		not exists rp in set routed_pieces & rp.piece_id = piece.piece_id and -- Piece can only be routed once.
+		(state = <filling> or state = <waiting_last_piece>) -- Location must be in a state to accept routing pieces.
+post not exists cp in set committed_pieces & cp.piece_id = piece.piece_id and -- 
+		exists rp in set routed_pieces & rp.piece_id = piece.piece_id;
 
+-- Open the gate.
 public open_gate: () ==> ()
-open_gate() == gate.state := <open>
-pre gate.state = <closed>;
+open_gate() == gate := <open>
+pre gate = <closed>; -- The gate must be closed before it can be opened.
 
+-- Close the gate.
 public close_gate: () ==> ()
-close_gate() == gate.state := <closed>
-pre gate.state = <open>;
+close_gate() == gate := <closed>
+pre gate = <open>; -- The gate must be open before it can be closed.
 
-public set_order: Order ==> ()
-set_order(order) == (
-	production.order := order
-)
-pre production.order = nil;
-
-public pure get_order: () ==> [Order]
-get_order() == return production.order;
-
+-- Sign a batch, this moves it towards a state of removing a batch.
 public sign_batch: () ==> ()
 sign_batch() == (
-	if state = <empty> then skip -- We are not producing anything. Do nothing.
-	else if state = <filling> then ( -- go to full or waiting_last_piece
-		if card production.committed_pieces <> 0 then state := <waiting_last_piece>
+	cases state:
+	<empty> -> skip, -- We are not producing anything. Do nothing.
+	<filling> -> ( -- go to full or waiting_last_piece
+		if card committed_pieces <> 0 then state := <waiting_last_piece>
 		else state := <full>;
-	)
-	else if state = <waiting_last_piece> then skip -- we are waiting for the last piece to be routed. Do nothing.
-	else if state = <full> then atomic (
+	),
+	<waiting_last_piece> -> skip, -- we are waiting for the last piece to be routed. Do nothing.
+	<full> -> atomic (
 		state := <empty>;
-		production := nil;
+		committed_pieces := {};
 	)
+	end 
 );
 
-public pure offer_piece: Piece ==> real
-offer_piece(piece) == return 1;--is not yet specified;
+-- Is the location in a state to receive new pieces. It will only accept pieces IFF it is either empty or filling.
+public pure is_available: nat ==> bool
+is_available(-) == ( -- time
+	return state = <empty> or state = <filling>;
+);
 
 public pure get_id: () ==> Location_ID
 get_id() == return location_id;
-
-public get_production: () ==> [Production]
-get_production() == return production;
-
-public set_production: Order ==> ()
-set_production(order) == atomic (
-	production := mk_Production({},{},false, order);
-	state := <filling>
-	);
 	
-public get_distance: () ==> nat1
+public pure get_distance: () ==> nat1
 get_distance() == return distance;
+
+public pure get_gate: () ==> Gate
+get_gate() == return gate;
 
 functions
 

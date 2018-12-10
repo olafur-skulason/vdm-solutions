@@ -1,0 +1,27 @@
+class Rate is subclass of Method
+values
+instance variables
+
+time : nat := 0;
+
+operations
+
+public Rate: Order ==> Rate
+Rate(order) == self.Method(order);
+
+public pure offer_piece: Piece ==> real
+offer_piece(piece) == return evaluate_criterion(piece) * time_since_last();
+
+public pure complete: () ==> bool
+complete() == return false; -- Rate is never finished.
+
+public commit_piece: Piece ==> ()
+commit_piece(-) == time := Time`get_time();
+
+private pure time_since_last: () ==> real
+time_since_last() == is not yet specified;
+
+functions
+
+traces
+end Rate

@@ -1,103 +1,152 @@
 class Tracker is subclass of Global
 types
 
+LocType = inmap Location_ID to Location
+inv LocNotEmpty == card dom LocNotEmpty <> 0;
+
 values
 
 conveyor_length : nat = 1000;
 step_distance : nat = 2;
 cut_off_grade : real = 0.5;
 
+
 instance variables
 
-locations : inmap Location_ID to Location;
-inv card dom locations <> 0;
+grader : Grader;
+locations : LocType;
 events : set of Event := {};
+public on_floor : set of Piece := {};
 
 operations 
 
-public Tracker: set of Location ==> Tracker
-Tracker(loc) == locations := { l.get_id() |-> l | l in set loc };
+public Tracker: set of Location * Grader ==> Tracker
+Tracker(loc, grd) == 
+(
+	locations := { l.get_id() |-> l | l in set loc };
+	grader := grd
+);
 
+-- Adds a piece to the event queue, two events are added, to grade the piece and send it off end.
 public add_piece: Piece ==> ()
 add_piece(piece) == 
 	def t : nat = World`time.get_time() in (
 		events := events union { mk_Event(<grade>, t+1, piece) , mk_Event(<off_end>, t+(conveyor_length/step_distance), piece)};
-	);
-
-public add_order: Order ==> ()
-add_order(order) == (
-	dcl remaining : nat := order.count;
-	while (exists l in set rng locations & l.get_production() = nil and remaining > 0)
-	do
-		let l in set rng locations be st l.get_production() = nil in (
-			l.set_production(order);
-			remaining := remaining - 1
-		);
-	if remaining > 0 then
-		while (exists low_prio_loc in set rng locations & low_prio_loc.get_production().order.priority < order.priority and remaining > 0)
-		do
-			let low_prio_loc in set rng locations be st low_prio_loc.get_production().order.priority < order.priority in (
-			sign_batch(low_prio_loc.get_id());
-			low_prio_loc.set_production(order); 
-			);
-	);
+	)
+pre forall e in set events & e.piece.piece_id <> piece.piece_id;
+	
 	
 public step_time: () ==> seq of Event
 step_time() == 
 	def t : nat = World`time.get_time() in (
 		dcl processed_events : seq of Event := [];
-		while exists e in set events & e.time < t do
-			let event in set events be st forall ev in set events & event <> ev => event.time < ev.time in (
-				if event.event_type = <grade> then (
-					dcl destination : Location := grade_piece(event.piece);
-					dcl piece : Piece := event.piece;
-					piece.destination := destination.get_id(); -- Assign destination
-					destination.commit_piece(piece); -- Commit piece
-					-- Schedule open/close gate events
-					events := events union { mk_Event(<open_gate>, t + (destination.get_distance()/step_distance), piece), mk_Event(<close_gate>, t + (destination.get_distance()+destination.get_gate_length())/step_distance, piece) };
-					-- Schedule routing event
-					events := events union {mk_Event(<route>, t + (destination.get_distance() + destination.get_gate_length()) / step_distance + destination.get_drop_time(), piece)};
-					-- Unschedule off-end event
-					let off_end_event in set events be st off_end_event.event_type = <off_end> and off_end_event.piece.piece_id = piece.piece_id in
-						events := events \ {off_end_event}
-				)
-				else if event.event_type = <route> then (
-					locations(event.piece.destination).route_piece(event.piece)
-				)
-				else if event.event_type = <open_gate> then (
-					locations(event.piece.destination).open_gate()
-				)
-				else if event.event_type = <close_gate> then (
-					locations(event.piece.destination).close_gate()
-				)
-				else if event.event_type = <off_end> then (
-					skip -- Write output
-				);
-				events := events \ {event};
-				processed_events := processed_events ^ [event]
+		for all event in set { e | e in set events & e.time <= t} do ( -- For each event that should happen by this time.
+				cases event.event_type:
+					<grade> -> ( -- Event is grade, the piece must be graded.
+						let grade_result = grader.grade_piece(event.piece, get_available_locations(t)) in -- Grade the piece 
+							let destination : Location = locations(grade_result.#1) in -- get the destination
+								let complete : bool = grade_result.#2 in -- Get batch completion flag.
+									let piece : Piece = mu((event.piece), destination |-> destination.get_id()) in ( -- Assign destination
+										destination.commit_piece(piece, complete); -- Commit piece
+										-- Schedule open/close gate events, and route.
+										events := events union {
+											mk_Event(<open_gate>, arrival_time(t, destination), piece), 
+											mk_Event(<close_gate>, close_time(t, destination), piece),
+											mk_Event(<route>, close_time(t,destination) + destination.get_drop_time(), piece) 
+										};
+										let off_end_event in set events be st off_end_event.event_type = <off_end> and 
+																			off_end_event.piece.piece_id = event.piece.piece_id in 
+											events := events \ {off_end_event}
+									)
+					),
+				<route> -> ( -- Event is route, route piece to destination. Deschedule off_end event.
+					locations(event.piece.destination).route_piece(event.piece);
+					if not locations(event.piece.destination).is_available(t) then -- Automatically sign off on complete batches. 
+						sign_batch(event.piece.destination)
+				),
+				<open_gate> -> 
+					locations(event.piece.destination).open_gate(),
+				<close_gate> -> 
+					locations(event.piece.destination).close_gate(),
+				<off_end> -> -- Drop piece on the floor.
+					on_floor := on_floor union {event.piece}
+				end;
+				events := events \ {event}; -- Dequeue event.
+				processed_events := processed_events ^ [event] -- Register processed event.
 			);
+			maintain_queue();
 			return processed_events
-	);
+	)
+post forall e in set events & e.time > Time`get_time();
 	
-private grade_piece: Piece ==> Location
-grade_piece(piece) == (
-	let destination in set rng locations be st 
-			forall loc in set rng locations & (destination.get_order() <> nil) and ( 
-				loc.get_order() <> nil => destination.offer_piece(piece) >= loc.offer_piece(piece) and 
-														destination.get_order().priority >= loc.get_order().priority) in
-				return destination; 
-);
+private maintain_queue: () ==> ()
+maintain_queue() == (
+	-- For all pieces with a destination
+	for all piece in set { e.piece | e in set events } do ( 
+		-- For all destinations whose gate will be open when the piece passes
+		for all location in set { loc | loc in set rng locations & piece.destination <> loc.get_id() and will_destination_be_open(piece, loc) } do
+			-- Find the close event which is not scheduled early enough to let this piece pass. 
+			let close_event in set events be st close_event.event_type = <close_gate> and
+					close_event.time >= arrival_time(piece.entry_time, location) and
+					close_event.time <= close_time(piece.entry_time, location) in 
+						events := (events union {mu(close_event, time |-> arrival_time(piece.entry_time, location) - 1)} ) \ {close_event};
+		
+		-- Unschedule off-end event
+		if exists off_end in set events & off_end_has_route(events, off_end, piece) then
+			let off_end in set events be st off_end_has_route(events, off_end, piece) in
+				events := events \ {off_end}
+	)
+)
+post forall p in set { e.piece | e in set events }, loc in set rng locations & p.destination <> loc.get_id() => ( not (passing(p, loc, Time`get_time())) or loc.get_gate() = <closed> );
 	
 public sign_batch: Location_ID ==> ()
 sign_batch(location_id) == 
-	locations(location_id).sign_batch()
-pre exists l in set dom locations & locations(l).get_id() = location_id;
+	if exists loc in set dom locations & loc = location_id then
+		locations(location_id).sign_batch();
 
 public pure is_finished: () ==> bool
-is_finished() == return card events = 0;
+is_finished() == return (card events = 0);
+
+private pure get_available_locations: nat ==> set of Location_ID
+get_available_locations(time) == (
+	return { l | l in set dom locations & locations(l).is_available(time) }
+);
+
+private pure will_destination_be_open: Piece * Location ==> bool
+will_destination_be_open(piece, loc) ==
+	return (piece.destination <> nil and locations(piece.destination).get_distance() <= loc.get_distance()) and
+		exists open in set events & (open.event_type = <open_gate> and 
+				open.time < arrival_time(piece.entry_time, loc) and
+				open.piece <> piece) and 
+		not exists close in set events & close.event_type = <close_gate> and
+				close.time > arrival_time(piece.entry_time, loc) and
+				close.time < close_time(piece.entry_time, loc);
 
 functions
--- TODO Define functiones here
+	
+private  arrival_time: nat1 * Location -> nat1
+arrival_time(entry_time, loc) == entry_time + (loc.get_distance()/step_distance);
+
+private close_time: nat1 * Location -> nat1
+close_time(entry_time, loc) == arrival_time(entry_time, loc) + (loc.get_gate_length() / step_distance);
+
+private off_end_has_route: set of Event * Event * Piece -> bool
+off_end_has_route(events, off_end, piece) == off_end.piece = piece and off_end.event_type = <off_end> and
+	exists route in set events & route.event_type = <route> and route.piece = piece;
+
+private passing: Piece * Location * nat +> bool
+passing(piece, loc, time) == 
+	piece.destination <> loc.get_id() and -- Pieces do not pass their destination 
+	time < close_time(piece.entry_time, loc) and -- The piece is not past the gate
+	time > arrival_time(piece.entry_time, loc) -- The piece has reached the gate
+	
+-- Discuss in report. Missed requirement
+--private schedule_gate_operations: set of Event * Location * nat +> set of Event
+--schedule_gate_operations(event_queue, destination, entry_time) == (
+--	dcl arrival_at_gate : nat := entry_time + destination.get_distance();
+--	if exists open_m, close_m in set event_queue & open_m.time > arrival_time and forall 
+--);
+
 traces
 -- TODO Define Combinatorial Test Traces here
 end Tracker

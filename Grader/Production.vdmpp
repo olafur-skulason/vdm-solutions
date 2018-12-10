@@ -1,0 +1,55 @@
+class Production is subclass of Global 
+
+values
+
+cutoff_point : real = 0.1
+
+instance variables
+
+order : Order;
+method : Method;
+
+operations
+
+public Production: Order ==> Production
+Production(new_order) == (
+	order := new_order;
+	method := Method`get_method(new_order)
+);
+
+public commit_piece: Piece ==> ()
+commit_piece(piece) == (
+	method.commit_piece(piece);
+	if method.complete() then ( -- If the piece was the last piece.
+		method := Method`get_method(order)
+	)
+)
+pre piece.destination = nil and not method.complete();
+
+public pure is_complete: () ==> bool
+is_complete() == method.complete();
+
+public pure offer_piece: Piece ==> real
+offer_piece(piece) == (
+	dcl o : real := method.offer_piece(piece);
+	if o > cutoff_point then
+		return o + order.priority
+	else
+		return 0;
+)
+pre piece.destination = nil
+post RESULT = 0 or RESULT >=  cutoff_point + order.priority; 
+
+public pure get_prio: () ==> nat
+get_prio() == return order.priority;
+
+public pure get_order: () ==> Order
+get_order() == return order
+
+functions
+
+
+traces
+
+
+end Production

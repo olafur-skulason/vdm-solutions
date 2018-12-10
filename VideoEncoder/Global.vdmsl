@@ -1,4 +1,5 @@
 types
+
 image ::
 	ID : token
 	quality : nat;
@@ -10,47 +11,64 @@ image ::
 	
 Bag ::
 	cause : <no_bsm> | <no_read> 
-	BG : BaggageRecording
-	dest : [BSM];
+	recording : BaggageRecording
+	destination : [BSM]
+	entry_time : nat;
 
 	
-BaggageRecording = set of image; -- A set of images of a bag tag with variant quality.
-Preselection = seq of image; -- A sequence of images ordered by highest quality first.
+BaggageRecording = set of image -- A set of images of a bag tag with variant quality.
+inv br == card br >= preselection_length;
+
+Preselection = seq of image -- A sequence of images ordered by highest quality first.
+inv preselection_max_length == len preselection_max_length = preselection_length;
 
 User ::
 	Group : set of (<VCS_operator> | <VCS_Administrator>)
-	user_id : seq of char;
+	user_id : seq of char
+	current_bag : [Bag];
 
 BSM :: 
 	code : seq of char
-	flight : Flight;
+	flight : [Flight];
 	
 Flight :: 
 	code : seq of char;
+	
+ActiveUsers = set of User
+inv ActiveUsers_Limit == card ActiveUsers_Limit < max_concurrent_users; -- No more than current_user can be logged into the system at any point.
 
 values
 
 max_concurrent_users : nat = 10;
+preselection_length : nat = 25;
+max_time_in_system : nat = 60
 
 state system_state of
-	current_users : set of User
+	current_users : ActiveUsers
 	baggage_queue : seq of Bag
 	known_BSM : set of BSM
 	known_flights : set of Flight
-inv mk_system_state(users, baggage, bsm, -) == 
-		card users < max_concurrent_users and -- No more than current_user can be logged into the system at any point. 
-		not forall bag in seq baggage & exists b in set bsm & bag.dest = b -- No bag can be in the queue with it's BSM known.
-init i == i = mk_system_state({}, [], {}, {})
+	current_time : nat
+inv mk_system_state(-, baggage, known_bsm, known_flights, time) == 
+		forall bsm in set known_bsm & bsm.flight in set known_flights and -- No BSM for flights that do not exist.
+		not forall bag_bsm in seq baggage & exists b in set known_bsm & bag_bsm.destination = b and -- No bag can be in the queue with it's BSM is known.
+		forall bag_bsm_exist in seq baggage & bag_bsm_exist.destination = nil or bag_bsm_exist.destination.flight = nil and
+		forall bsm_valid in set known_bsm & bsm_valid.flight <> nil and
+		forall bag_time in seq baggage & bag_time.entry_time + max_time_in_system <= time
+init i == i = mk_system_state({}, [], {}, {}, 0)
 end	
 
 operations
 
-Login(user:User) auth_level:nat
+Login(user:User) auth_level: <Rejected> | <VCS_operator> | <VCS_Administrator>
 pre user not in set system_state.current_users  -- User must not be logged in.
-		and card (user.Group inter {<VCS_operator>, <VCS_Administrator>}) > 0 -- User must be authorized
-post user in set system_state.current_users -- User must be logged in. 
-		and auth_level = card (user.Group inter {<VCS_operator>, <VCS_Administrator>}); -- User must be correctly authorized.
-
+post if <VCS_Administrator> in set user.Group then
+				auth_level = <VCS_Administrator> and user in set current_users
+		 else if <VCS_operator> in set user.Group then
+		 		auth_level = <VCS_operator> and user in set system_state.current_users
+		 	else
+		 		auth_level = <Rejected> and not user in set system_state.current_users;
+		 		
 Logout(user:User)
 pre user in set system_state.current_users
 post user not in set system_state.current_users;
@@ -59,32 +77,38 @@ Logout_other(admin:User, user:User)
 pre <VCS_Administrator> in set admin.Group -- admin must be Administrator
 		and user in set system_state.current_users
 		and admin in set system_state.current_users
+		and user <> admin
 post user not in set system_state.current_users;
 
+Assign_bag(user:User) result:()
+pre user in set system_state.current_users and user.current_bag = nil
+post user.current_bag = hd system_state~.baggage_queue and tl system_state.baggage_queue = system_state~.baggage_queue;
+
 Encode_baggage(baggage:Bag, user:User) result:bool
-pre user in set system_state.current_users and baggage.dest = nil
-post result => baggage.dest <> nil;
+pre user in set system_state.current_users and baggage.destination = nil and
+		baggage.entry_time + max_time_in_system <= system_state.current_time
+post result => baggage.destination <> nil and baggage.destination in set known_BSM;
 
 Get_new_flights(nf:set of Flight)
 pre not nf subset system_state.known_flights
-post nf subset system_state.known_flights;
+post nf subset system_state.known_flights and
+		not forall bag in seq system_state.baggage_queue & 
+			exists f in set system_state.known_flights & bag.destination.flight = f;
 
 Get_new_BSM(bsm: set of BSM)
 pre not bsm subset system_state.known_BSM
 post bsm subset system_state.known_BSM and 
-		not forall bag in seq system_state.baggage_queue & exists b in set system_state.known_BSM & bag.dest = b;
-
-
+		not forall bag in seq system_state.baggage_queue & exists b in set system_state.known_BSM & bag.destination = b;
 
 functions
 
 GetBaggageRecording() bg:BaggageRecording
-post card bg >= 25;
+post card bg >= preselection_length;
 
 SortImages(bg:BaggageRecording) ps:Preselection
-pre card bg > 25
-post len ps = 25 and (forall i,j in set inds ps & (i < j) => ps(i).quality >= ps(j).quality);
+pre card bg > preselection_length
+post len ps = preselection_length and (forall i,j in set inds ps & (i < j) => ps(i).quality >= ps(j).quality);
 
 EvaluateImage(ps:Preselection) dest:seq of char
-pre len ps = 25
+pre len ps = preselection_length
 post len dest > 0 and len dest <= 3;

@@ -1,0 +1,15 @@
+module bug_report
+exports all
+definitions 
+
+state StateName of
+	value : nat
+end 
+
+operations 
+
+use_value () result:()
+post StateName.value > StateName~.value;
+
+
+end bug_report

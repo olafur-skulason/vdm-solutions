@@ -3,12 +3,13 @@ class World
 instance variables
 
 public static time : Time := new Time();
-public env : Environment := new Environment("pieces.txt", "orders.txt", "batches.txt");  
+public env : Environment;  
 
 operations
 
 public World : () ==> World
-World() == ( skip
+World() == ( 
+	env := new Environment("data_raw.txt", "orders.txt")
 );
 
 public run: () ==> ()

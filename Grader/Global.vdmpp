@@ -6,32 +6,38 @@ public Event ::
 	time : nat1
 	piece : Piece;
 	
-public Gate ::
-	state : <open> | <closed>;
-	
-public Location_ID :: token;
+public Location_ID = token;
 
 public Algorithm = <grading> | <batching> | <rate>; 
 
 public Order :: 
 	priority : nat
 	algorithm : Algorithm
+	concurrent : nat
+	locations : set of Location_ID
+	criteria: map seq of char to real
+	completion: map seq of char to real
 	count : nat
-	min_weight: real
-	max_weight: real;
+inv order == dom order.criteria subset { "min", "max" } and
+						 order.algorithm <> <batching> => card rng order.completion = 0;  
 	
 public Piece ::
 	piece_id : token
+	entry_time : nat
 	weight : real
 	length : real
 	position : nat
-	destination : [Location_ID];
+	destination : [Location_ID]
+inv piece == piece.weight >= 0 and piece.weight <= 1000000 and
+						 piece.length >= 0 and piece.length <= 1000000 and
+						 piece.entry_time >= 0 and
+						 piece.position >= 0; 
 	
-public Production ::
-	routed_pieces : set of Piece
-	committed_pieces : set of Piece
-	complete : bool
-	order : [Order]
+public Batch ::
+	pieces : set of Piece
+	order : Order;
+	
+public Gate = <open> | <closed>;
 	
 
 values

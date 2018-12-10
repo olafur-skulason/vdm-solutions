@@ -1,0 +1,44 @@
+class Scheduler
+types
+
+segment_id = <A> | <B> | <C> | <D>;
+scheduled_segment :: 
+		segment : segment_id
+		hour : nat
+inv time_limit == time_limit.hour >= 0 and time_limit.hour < 24;
+route ::
+	train : token
+	rt : seq of scheduled_segment
+inv routeLen == len routeLen.rt < 3
+
+instance variables
+
+scheduled_routes : set of route := {};
+inv forall a, b in set scheduled_routes & 
+	a <> b => forall a_rt in seq a.rt, b_rt in seq b.rt &  
+		a_rt.segment <> b_rt.segment or a_rt.hour <> b_rt.hour;
+
+
+operations
+
+schedule_route: route ==> ()
+schedule_route(new_route) == 
+		scheduled_routes := scheduled_routes union {new_route}
+pre forall rt in set scheduled_routes & new_route.train <> rt.train
+
+functions
+traces
+
+T1: let first_seg in set { <A>, <B>, <C>, <D> } in
+			let first_t in set { t | t in set {0,...,5}} in
+				let second_seg in set { <A>, <B>, <C>, <D> } in
+					let second_t in set { t | t in set {0,...,5}} in
+						let first_train in set { mk_token(1), mk_token(2) } in
+							let second_train in set { mk_token(1), mk_token(2) } in
+							(
+								schedule_route(mk_route(first_train, [mk_scheduled_segment(first_seg, first_t)]));
+								schedule_route(mk_route(second_train, [mk_scheduled_segment(second_seg, second_t)]))
+							);
+	
+end Scheduler 
+
